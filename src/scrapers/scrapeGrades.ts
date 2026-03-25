@@ -16,8 +16,8 @@
  *   7. Post { modules, exams } as GRADES_DATA payload.
  */
 
-export const GRADES_URL =
-  'https://mijn.calderacademie.nl/nl/fvs/v3/legacy_layout/#/student-assessment/modules';
+// Grades are now fetched directly via src/api/fetchGrades.ts
+// This file is kept as a placeholder and no longer used.
 
 export const gradesScraperJS = `
 (function() {

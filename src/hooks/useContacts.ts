@@ -1,26 +1,21 @@
 import { useEffect } from 'react';
 import { useContactsStore } from '../store/contactsStore';
 import { useScraperQueue } from '../store/scraperQueueStore';
-import { CONTACTS_URL, contactsScraperJS } from '../scrapers/scrapeContacts';
+import { CONTACTS_PAGE_URL, contactsFetcherJS } from '../api/fetchContacts';
 
 export function useContacts() {
   const { loading, lastFetched, setLoading } = useContactsStore();
   const enqueueScrape = useScraperQueue((s) => s.enqueueScrape);
 
-  function fetch() {
+  function load() {
     setLoading(true);
-    enqueueScrape({
-      id: 'contacts',
-      url: CONTACTS_URL,
-      scraperJs: contactsScraperJS,
-      expectedType: 'CONTACTS_DATA',
-    });
+    enqueueScrape({ id: 'contacts', url: CONTACTS_PAGE_URL, scraperJs: contactsFetcherJS, expectedType: 'CONTACTS_DATA' });
   }
 
   useEffect(() => {
     const stale = !lastFetched || Date.now() - lastFetched > 5 * 60 * 1000;
-    if (stale && !loading) fetch();
+    if (stale && !loading) load();
   }, []);
 
-  return { refresh: fetch };
+  return { refresh: load };
 }

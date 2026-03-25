@@ -1,12 +1,12 @@
 import { create } from 'zustand';
-import { Absence } from '../types';
+import { AttendanceRecord } from '../types';
 
 interface AbsencesState {
-  absences: Absence[];
+  absences: AttendanceRecord[];
   loading: boolean;
   error: string | null;
   lastFetched: number | null;
-  setAbsences: (absences: Absence[]) => void;
+  setAbsences: (absences: AttendanceRecord[]) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
 }

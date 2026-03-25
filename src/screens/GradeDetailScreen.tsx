@@ -37,8 +37,14 @@ export function GradeDetailScreen({ route }: GradeDetailScreenProps) {
       </View>
 
       <FlatList
-        data={[...subject.grades].sort((a, b) => b.date.localeCompare(a.date))}
-        keyExtractor={(_, i) => String(i)}
+        data={[...subject.grades].sort((a, b) => {
+          const toKey = (d: string) => {
+            const p = d.split('-');
+            return p.length === 3 && p[0].length === 2 ? `${p[2]}-${p[1]}-${p[0]}` : d;
+          };
+          return toKey(b.date).localeCompare(toKey(a.date));
+        })}
+        keyExtractor={(item, i) => item.id ?? String(i)}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => <GradeRow grade={item} />}
       />

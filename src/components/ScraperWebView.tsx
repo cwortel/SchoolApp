@@ -9,7 +9,7 @@
  * Only one scrape runs at a time; further requests queue in Zustand
  * and are picked up as soon as the WebView becomes idle.
  */
-import React, { useRef, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
 import WebView, { WebViewMessageEvent } from 'react-native-webview';
 import { useScraperQueue } from '../store/scraperQueueStore';
@@ -17,12 +17,11 @@ import { useScheduleStore } from '../store/scheduleStore';
 import { useGradesStore } from '../store/gradesStore';
 import { useAbsencesStore } from '../store/absencesStore';
 import { useContactsStore } from '../store/contactsStore';
-import { ScraperMessage, Lesson, Grade, Absence, Contact } from '../types';
+import { ScraperMessage, Lesson, Grade, AttendanceRecord, Contact } from '../types';
 
 export function ScraperWebView() {
   const pending = useScraperQueue((s) => s.queue[0] ?? null);
   const dequeue = useScraperQueue((s) => s.dequeue);
-  const webviewRef = useRef<WebView>(null);
 
   const setLessons    = useScheduleStore((s) => s.setLessons);
   const setScheduleError = useScheduleStore((s) => s.setError);
@@ -32,11 +31,6 @@ export function ScraperWebView() {
   const setAbsencesError = useAbsencesStore((s) => s.setError);
   const setContacts  = useContactsStore((s) => s.setContacts);
   const setContactsError = useContactsStore((s) => s.setError);
-
-  const handleLoad = useCallback(() => {
-    if (!pending) return;
-    webviewRef.current?.injectJavaScript(pending.scraperJs);
-  }, [pending]);
 
   const handleMessage = useCallback(
     (event: WebViewMessageEvent) => {
@@ -55,7 +49,7 @@ export function ScraperWebView() {
           setGradesData(msg.payload as { modules: Grade[]; exams: Grade[] });
           break;
         case 'ABSENCES_DATA':
-          setAbsences(msg.payload as Absence[]);
+          setAbsences(msg.payload as AttendanceRecord[]);
           break;
         case 'CONTACTS_DATA':
           setContacts(msg.payload as Contact[]);
@@ -80,13 +74,14 @@ export function ScraperWebView() {
   return (
     <View style={styles.offscreen}>
       <WebView
-        ref={webviewRef}
+        key={String(pending.requestId ?? pending.id)}
         source={{ uri: pending.url }}
-        onLoadEnd={handleLoad}
+        injectedJavaScript={pending.scraperJs + '\ntrue;'}
         onMessage={handleMessage}
         sharedCookiesEnabled
         domStorageEnabled
         javaScriptEnabled
+        limitsNavigationsToAppBoundDomains
         style={styles.webview}
       />
     </View>

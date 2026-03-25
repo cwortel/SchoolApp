@@ -25,7 +25,7 @@ export function GradesScreen() {
     return [...examGrades].sort((a, b) => {
       const yearDiff = (b.year ?? 0) - (a.year ?? 0);
       if (yearDiff !== 0) return yearDiff;
-      return (b.period ?? '').localeCompare(a.period ?? '');
+      return parseInt(b.period ?? '0', 10) - parseInt(a.period ?? '0', 10);
     });
   }, [examGrades]);
 
@@ -46,7 +46,7 @@ export function GradesScreen() {
 
       <FlatList
         data={sorted}
-        keyExtractor={(_, i) => String(i)}
+        keyExtractor={(item, i) => item.id ?? String(i)}
         contentContainerStyle={styles.list}
         refreshControl={
           <RefreshControl refreshing={loading} onRefresh={refresh} tintColor={Colors.primary} />
@@ -92,9 +92,9 @@ function GradeRow({ grade }: { grade: Grade }) {
     ? formatGrade(grade.value)
     : grade.status === 'passed' ? 'V' : grade.status === 'failed' ? 'NV' : '–';
 
-  // "Jaar 1 - Periode 2" → "J1 P2"
-  const periodTag = grade.date
-    .replace(/Jaar\s*/i, 'J').replace(/\s*-\s*Periode\s*/i, ' P') || '–';
+  const periodTag = grade.year != null && grade.period != null
+    ? `J${grade.year} P${grade.period}`
+    : '–';
 
   return (
     <View style={styles.row}>
