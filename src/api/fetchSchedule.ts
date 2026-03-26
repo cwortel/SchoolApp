@@ -67,13 +67,15 @@ export async function fetchSchedule(daysAhead = 31): Promise<Lesson[]> {
  * Called from useSchedule so the computed URL can be passed directly as
  * the ScraperWebView's source URI (avoids loading the Angular SPA).
  */
-export function getScheduleApiUrl(daysAhead = 31): string {
+export function getScheduleApiUrl(daysBack = 90, daysAhead = 180): string {
   const today = new Date();
+  const start = new Date(today);
+  start.setDate(today.getDate() - daysBack);
   const end = new Date(today);
   end.setDate(today.getDate() + daysAhead);
   return (
     `https://mijn.calderacademie.nl/api/v1/student/get_rooster/` +
-    `${fmt(today)}/${fmt(end)}/all/all/all/all/all/all/all/all/all?_locale=nl`
+    `${fmt(start)}/${fmt(end)}/all/all/all/all/all/all/all/all/all?_locale=nl`
   );
 }
 
@@ -86,6 +88,10 @@ export const scheduleFetcherJS = `
   function extract() {
     try {
       var text = (document.body.innerText || document.body.textContent || '').trim();
+      if (text.charAt(0) !== '[' && text.charAt(0) !== '{') {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'SESSION_EXPIRED' }));
+        return;
+      }
       var data = JSON.parse(text);
       var mapped = (Array.isArray(data) ? data : []).map(function(item) {
         var room = (item.lokaal || '').trim();

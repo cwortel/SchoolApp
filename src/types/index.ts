@@ -115,8 +115,11 @@ export type ScraperMessageType =
   | 'CONTACTS_DATA'
   | 'LOGIN_SUCCESS'
   | 'LOGIN_DEBUG'
+  | 'LOGIN_VERIFYING'
+  | 'LOGIN_VERIFY_FAILED'
   | 'SESSION_VALID'
   | 'SESSION_INVALID'
+  | 'SESSION_EXPIRED'
   | 'SCRAPE_ERROR';
 
 export interface ScraperMessage {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -60,6 +60,19 @@ const DUTCH_MONTHS = [
   'juli', 'augustus', 'september', 'oktober', 'november', 'december',
 ];
 
+// Time windows per dagdeel. Weekend times are 30 min later.
+const DAGDEEL_TIMES: Record<string, { weekday: string; weekend: string }> = {
+  Ochtend: { weekday: '09:00 – 12:00', weekend: '09:30 – 12:30' },
+  Middag:  { weekday: '13:00 – 16:00', weekend: '13:30 – 16:30' },
+  Avond:   { weekday: '19:00 – 22:00', weekend: '19:00 – 22:00' },
+};
+
+function dagdeelTime(dagdeel: string, isWeekend: boolean): string {
+  const entry = DAGDEEL_TIMES[dagdeel];
+  if (!entry) return dagdeel;
+  return `${dagdeel}  ${isWeekend ? entry.weekend : entry.weekday}`;
+}
+
 // ─── screen ──────────────────────────────────────────────────────────────────
 
 export function ScheduleScreen() {
@@ -70,6 +83,19 @@ export function ScheduleScreen() {
   const today = useMemo(() => todayStr(), []);
   const [selectedDate, setSelectedDate] = useState<string>(today);
   const [weekOffset, setWeekOffset] = useState(0);
+  // Prevents the auto-jump-to-first-lesson from firing again after a pull-to-refresh
+  const didAutoJump = useRef(false);
+
+  // Move one week forward or backward, keeping the same day-of-week selected.
+  function moveWeek(delta: number) {
+    const newOffset = weekOffset + delta;
+    setWeekOffset(newOffset);
+    const cur = isValidDate(parseDate(selectedDate)) ? parseDate(selectedDate) : new Date();
+    const dow = cur.getDay(); // 0=Sun..6=Sat
+    const idx = dow === 0 ? 6 : dow - 1; // Mon=0..Sun=6
+    const newMonday = addDays(getMondayOf(parseDate(today)), newOffset * 7);
+    setSelectedDate(formatDateStr(addDays(newMonday, idx)));
+  }
 
   const weekMonday = useMemo(
     () => addDays(getMondayOf(parseDate(today)), weekOffset * 7),
@@ -86,9 +112,12 @@ export function ScheduleScreen() {
     [lessons],
   );
 
-  // When lessons load and today has none, jump to the earliest lesson date
+  // On initial data load only: if the selected date has no lessons, jump to the
+  // first lesson date. Guarded by didAutoJump so pull-to-refresh can't reset position.
   useEffect(() => {
     if (lessons.length === 0) return;
+    if (didAutoJump.current) return;
+    didAutoJump.current = true;
     if (lessonDateSet.has(selectedDate)) return;
     const sorted = [...lessons]
       .filter((l) => l.date && isValidDate(parseDate(l.date)))
@@ -114,6 +143,14 @@ export function ScheduleScreen() {
     [lessons, selectedDate],
   );
 
+  // Is the selected date a weekend day?
+  const selectedIsWeekend = useMemo(() => {
+    const d = parseDate(selectedDate);
+    if (!isValidDate(d)) return false;
+    const dow = d.getDay();
+    return dow === 0 || dow === 6;
+  }, [selectedDate]);
+
   const headerLabel = useMemo(() => {
     const d = parseDate(selectedDate);
     if (!isValidDate(d)) return 'Rooster';
@@ -134,7 +171,7 @@ export function ScheduleScreen() {
         {/* week strip */}
         <View style={styles.weekStrip}>
           <TouchableOpacity
-            onPress={() => setWeekOffset((w) => w - 1)}
+            onPress={() => moveWeek(-1)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Ionicons name="chevron-back" size={20} color="rgba(255,255,255,0.75)" />
@@ -164,7 +201,7 @@ export function ScheduleScreen() {
           })}
 
           <TouchableOpacity
-            onPress={() => setWeekOffset((w) => w + 1)}
+            onPress={() => moveWeek(1)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.75)" />
@@ -193,15 +230,31 @@ export function ScheduleScreen() {
           )
         }
         ItemSeparatorComponent={() => <View style={styles.separator} />}
-        renderItem={({ item, index }) => <LessonRow lesson={item} index={index} />}
+        renderItem={({ item, index }) => <LessonRow lesson={item} index={index} isWeekend={selectedIsWeekend} />}
+        ListFooterComponent={<TimeReferenceFooter isWeekend={selectedIsWeekend} />}
       />
+    </View>
+  );
+}
+
+// ─── time reference footer ───────────────────────────────────────────────────
+
+function TimeReferenceFooter({ isWeekend }: { isWeekend: boolean }) {
+  return (
+    <View style={styles.timeRef}>
+      {Object.entries(DAGDEEL_TIMES).map(([label, times]) => (
+        <View key={label} style={styles.timeRefRow}>
+          <Text style={styles.timeRefLabel}>{label}</Text>
+          <Text style={styles.timeRefTime}>{isWeekend ? times.weekend : times.weekday}</Text>
+        </View>
+      ))}
     </View>
   );
 }
 
 // ─── lesson row ──────────────────────────────────────────────────────────────
 
-function LessonRow({ lesson, index }: { lesson: Lesson; index: number }) {
+function LessonRow({ lesson, index, isWeekend }: { lesson: Lesson; index: number; isWeekend: boolean }) {
   const isUnscheduled = lesson.status === 'unscheduled';
 
   return (
@@ -280,6 +333,31 @@ const styles = StyleSheet.create({
   separator: { height: 1, backgroundColor: Colors.border, marginLeft: 52 },
   empty: { alignItems: 'center', paddingTop: 64, gap: Spacing.base, backgroundColor: Colors.surface, flex: 1 },
   emptyText: { fontSize: 15, color: Colors.textMuted },
+
+  // time reference footer
+  timeRef: {
+    paddingHorizontal: Spacing.base,
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing.xl,
+    gap: 6,
+  },
+  timeRefRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 2,
+  },
+  timeRefLabel: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    fontWeight: '500',
+    width: 70,
+  },
+  timeRefTime: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    fontVariant: ['tabular-nums'],
+  },
 
   // row
   row: {

@@ -75,7 +75,7 @@ export function AbsencesScreen() {
 
       <FlatList
         data={filtered}
-        keyExtractor={(item) => `${item.kvmrId}-${item.dagdeelAfk}`}
+        keyExtractor={(item) => `${item.lessonDate}-${item.kvmrId}-${item.dagdeelAfk}`}
         contentContainerStyle={styles.list}
         refreshControl={
           <RefreshControl refreshing={loading} onRefresh={refresh} tintColor={Colors.primary} />

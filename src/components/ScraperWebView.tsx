@@ -17,6 +17,7 @@ import { useScheduleStore } from '../store/scheduleStore';
 import { useGradesStore } from '../store/gradesStore';
 import { useAbsencesStore } from '../store/absencesStore';
 import { useContactsStore } from '../store/contactsStore';
+import { useAuthStore } from '../store/authStore';
 import { ScraperMessage, Lesson, Grade, AttendanceRecord, Contact } from '../types';
 
 export function ScraperWebView() {
@@ -31,6 +32,7 @@ export function ScraperWebView() {
   const setAbsencesError = useAbsencesStore((s) => s.setError);
   const setContacts  = useContactsStore((s) => s.setContacts);
   const setContactsError = useContactsStore((s) => s.setError);
+  const logout = useAuthStore((s) => s.logout);
 
   const handleNetworkError = useCallback(() => {
     const errMsg = `Netwerkfout bij ophalen ${pending?.id ?? ''}`;
@@ -70,6 +72,11 @@ export function ScraperWebView() {
           else if (pending?.id === 'absences') setAbsencesError(errMsg);
           else if (pending?.id === 'contacts') setContactsError(errMsg);
           break;
+        case 'SESSION_EXPIRED':
+          // Session cookie expired — clear all queued scrapes and go back to login
+          dequeue();
+          logout();
+          return;
         default:
           return; // not for us
       }

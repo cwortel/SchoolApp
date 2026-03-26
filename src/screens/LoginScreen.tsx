@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { StyleSheet, View, ActivityIndicator, Text, Dimensions, Pressable } from 'react-native';
-import { WebView, WebViewMessageEvent, WebViewNavigation, WebViewHttpErrorEvent } from 'react-native-webview';
+import { WebView, WebViewMessageEvent, WebViewNavigation } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../store/authStore';
 import { LOGIN_URL, loginDetectionJS } from '../scrapers/scrapeLogin';
@@ -60,44 +60,12 @@ export function LoginScreen() {
   const insets = useSafeAreaInsets();
   const setLoggedIn = useAuthStore((s) => s.setLoggedIn);
   const handledRef = useRef(false);
+  const verifyingRef = useRef(false);
   const webViewRef = useRef<WebView>(null);
   const [loadProgress, setLoadProgress] = useState(0);
   const [pageLoaded, setPageLoaded] = useState(false);
   const [verifying, setVerifying] = useState(false);
-
-  // Injected when the server returns a 5xx on the main page load.
-  // Checks whether the session cookie is valid despite the error —
-  // some portal servers set the cookie before emitting the 500.
-  const verifyAfter500JS = `
-(function() {
-  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'LOGIN_DEBUG', message: 'HTTP-err verify start — url=' + window.location.href }));
-  fetch('/api/v1/student/personal-attendance-overview?_locale=nl', { credentials: 'include' })
-    .then(function(r) {
-      var ct = r.headers.get('content-type') || '';
-      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'LOGIN_DEBUG', message: 'HTTP-err verify result — status=' + r.status + ' ct=' + ct }));
-      if (r.ok && ct.indexOf('json') !== -1) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'LOGIN_SUCCESS' }));
-      }
-    })
-    .catch(function(e) {
-      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'LOGIN_DEBUG', message: 'HTTP-err verify fetch error: ' + String(e && e.message ? e.message : e) }));
-    });
-  true;
-})();
-`;
-
-  function handleHttpError(event: WebViewHttpErrorEvent) {
-    const { statusCode } = event.nativeEvent;
-    if (statusCode >= 500 && !handledRef.current) {
-      // Cover the error page immediately so the user never sees it.
-      setVerifying(true);
-      // Session cookie may have been set before the server crashed.
-      // Give the browser 300 ms to process Set-Cookie headers, then check.
-      setTimeout(() => {
-        webViewRef.current?.injectJavaScript(verifyAfter500JS);
-      }, 300);
-    }
-  }
+  const [verifyFailed, setVerifyFailed] = useState(false);
 
   function handleContinue() {
     if (handledRef.current) return;
@@ -108,11 +76,27 @@ export function LoginScreen() {
   function handleMessage(event: WebViewMessageEvent) {
     try {
       const msg: ScraperMessage = JSON.parse(event.nativeEvent.data);
-      if (msg.type === 'LOGIN_DEBUG') return;
       if (handledRef.current) return;
-      if (msg.type === 'LOGIN_SUCCESS') {
+      if (msg.type === 'LOGIN_VERIFYING') {
+        verifyingRef.current = true;
+        setVerifying(true);
+        // Lift overlay after 5s if LOGIN_SUCCESS hasn't fired — portal may be
+        // showing the login form again and the user needs to be able to interact.
+        setTimeout(() => {
+          if (!handledRef.current) {
+            verifyingRef.current = false;
+            setVerifying(false);
+            setVerifyFailed(false);
+          }
+        }, 5000);
+      } else if (msg.type === 'LOGIN_SUCCESS') {
         handledRef.current = true;
+        verifyingRef.current = false;
         setLoggedIn(true);
+      } else if (msg.type === 'LOGIN_VERIFY_FAILED') {
+        verifyingRef.current = false;
+        setVerifying(false);
+        setVerifyFailed(false);
       }
     } catch {
       // ignore malformed messages
@@ -120,8 +104,17 @@ export function LoginScreen() {
   }
 
   function handleNavChange(nav: WebViewNavigation) {
-    // If the user navigates away from a 500 (e.g. back to login), lift the overlay
-    if (nav.loading) setVerifying(false);
+    if (handledRef.current) return;
+    // The portal always redirects to the API URL after successful 2FA.
+    // The session cookie is set (HttpOnly) but unreadable by JS fetch.
+    // Navigation TO this URL is the reliable signal that login succeeded.
+    if (nav.url.includes('/api/v1/student/')) {
+      handledRef.current = true;
+      verifyingRef.current = true;
+      setVerifying(true);
+      // Small delay to let the cookie propagate before the scrapers start.
+      setTimeout(() => setLoggedIn(true), 1000);
+    }
   }
 
   return (
@@ -149,7 +142,6 @@ export function LoginScreen() {
           injectedJavaScript={`${loginStyleJS}\n${loginDetectionJS}\ntrue;`}
           onMessage={handleMessage}
           onNavigationStateChange={handleNavChange}
-          onHttpError={handleHttpError}
           onLoadProgress={({ nativeEvent }) => setLoadProgress(nativeEvent.progress)}
           onLoadEnd={() => setPageLoaded(true)}
           startInLoadingState
@@ -168,8 +160,19 @@ export function LoginScreen() {
         {/* Overlay shown while verifying session after a server error */}
         {verifying && (
           <View style={styles.verifyingOverlay}>
-            <ActivityIndicator size="large" color={NAVB_GREEN} />
-            <Text style={styles.loadingText}>Bezig met inloggen…</Text>
+            {!verifyFailed ? (
+              <>
+                <ActivityIndicator size="large" color={NAVB_GREEN} />
+                <Text style={styles.loadingText}>Bezig met inloggen…</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.loadingText}>Sessie kon niet worden bevestigd.</Text>
+                <Pressable style={styles.continueButton} onPress={handleContinue}>
+                  <Text style={styles.continueButtonText}>Doorgaan naar app</Text>
+                </Pressable>
+              </>
+            )}
           </View>
         )}
       </View>
@@ -245,6 +248,18 @@ const styles = StyleSheet.create({
     backgroundColor: NAVB_GREEN,
   },
   webview: { flex: 1 },
+  continueButton: {
+    marginTop: 20,
+    backgroundColor: NAVB_GREEN,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 10,
+  },
+  continueButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
   loading: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
@@ -273,23 +288,5 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.40)',
     fontSize: 13,
     textDecorationLine: 'underline',
-  },
-  debugPanel: {
-    position: 'absolute',
-    left: 8,
-    right: 8,
-    maxHeight: 160,
-    backgroundColor: 'rgba(0,0,0,0.82)',
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  debugScroll: {
-    flex: 1,
-  },
-  debugLine: {
-    color: '#00FF88',
-    fontSize: 10,
-    fontFamily: 'Courier New',
-    lineHeight: 14,
   },
 });

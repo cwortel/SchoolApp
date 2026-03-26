@@ -46,45 +46,21 @@ export const loginDetectionJS = `
     window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'LOGIN_DEBUG', message: msg }));
   }
 
-  function verify() {
-    if (done) return;
-    dbg('API check start — url=' + window.location.href);
-    fetch('/api/v1/student/personal-attendance-overview?_locale=nl', { credentials: 'include' })
-      .then(function(r) {
-        if (done) return;
-        var ct = r.headers.get('content-type') || '';
-        dbg('API check result — status=' + r.status + ' ct=' + ct);
-        if (r.ok && ct.indexOf('json') !== -1) {
-          done = true;
-          if (obs) obs.disconnect();
-          dbg('LOGIN_SUCCESS firing');
-          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'LOGIN_SUCCESS' }));
-        } else {
-          dbg('API not ready — keep observing (status=' + r.status + ')');
-        }
-      })
-      .catch(function(e) {
-        dbg('API fetch error: ' + String(e && e.message ? e.message : e));
-      });
-  }
-
   function check() {
     if (done) return;
-    var hasDash  = !!document.querySelector('app-student-dashboard');
-    var has2FA   = !!document.querySelector('input[id="_auth_code"]');
-    var hasError = !!document.querySelector('app-error-page, .error-page, [class*="error"]');
-    dbg('DOM check — dashboard=' + hasDash + ' 2FA=' + has2FA + ' error=' + hasError + ' url=' + window.location.href);
-    if (!hasDash) return;
-    if (has2FA) return;
-    verify();
+    var hasDash = !!document.querySelector('app-student-dashboard');
+    var has2FA  = !!document.querySelector('input[id="_auth_code"]');
+    dbg('DOM check — dashboard=' + hasDash + ' 2FA=' + has2FA + ' url=' + window.location.href);
+    if (!hasDash || has2FA) return;
+    done = true;
+    if (obs) obs.disconnect();
+    dbg('LOGIN_SUCCESS firing');
+    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'LOGIN_SUCCESS' }));
   }
 
-  // Define obs first so obs.disconnect() is always safe inside verify()
   obs = new MutationObserver(check);
   obs.observe(document.documentElement, { childList: true, subtree: true });
-
   dbg('loginDetectionJS installed — url=' + window.location.href);
-  // Immediate check — covers fast devices where Angular has already rendered
   check();
 })();
 `;

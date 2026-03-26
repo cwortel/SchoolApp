@@ -60,6 +60,10 @@ export const absencesFetcherJS = `
   function extract() {
     try {
       var text = (document.body.innerText || document.body.textContent || '').trim();
+      if (text.charAt(0) !== '[' && text.charAt(0) !== '{') {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'SESSION_EXPIRED' }));
+        return;
+      }
       var data = JSON.parse(text);
       var mapped = (Array.isArray(data) ? data : []).map(function(r) {
         return {

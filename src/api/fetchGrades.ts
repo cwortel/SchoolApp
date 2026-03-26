@@ -105,6 +105,10 @@ export const gradesFetcherJS = `
   function extract() {
     try {
       var text = (document.body.innerText || document.body.textContent || '').trim();
+      if (text.charAt(0) !== '[' && text.charAt(0) !== '{') {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'SESSION_EXPIRED' }));
+        return;
+      }
       var data = JSON.parse(text);
       var modules = (data.allModules || [])
         .filter(function(r) { return r.Periode !== 100 && r.Jaar !== 100 && r.kvmr_id !== null; })

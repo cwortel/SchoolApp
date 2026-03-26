@@ -115,6 +115,10 @@ export const CONTACTS_PAGE_URL = 'https://mijn.calderacademie.nl/edu_pages/conta
 export const contactsFetcherJS = `
 (function() {
   try {
+    if (document.querySelector('input[name="_username"], input[type="password"]')) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'SESSION_EXPIRED' }));
+      return;
+    }
     var scripts = document.querySelectorAll('script');
     var src = '';
     for (var i = 0; i < scripts.length; i++) { src += scripts[i].textContent || ''; }
