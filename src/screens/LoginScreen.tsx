@@ -1,9 +1,9 @@
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { StyleSheet, View, ActivityIndicator, Text, Dimensions, Pressable } from 'react-native';
-import { WebView, WebViewMessageEvent } from 'react-native-webview';
+import { WebView, WebViewMessageEvent, WebViewNavigation, WebViewHttpErrorEvent } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../store/authStore';
-import { LOGIN_URL } from '../scrapers/scrapeLogin';
+import { LOGIN_URL, loginDetectionJS } from '../scrapers/scrapeLogin';
 import { ScraperMessage } from '../types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -60,8 +60,44 @@ export function LoginScreen() {
   const insets = useSafeAreaInsets();
   const setLoggedIn = useAuthStore((s) => s.setLoggedIn);
   const handledRef = useRef(false);
+  const webViewRef = useRef<WebView>(null);
   const [loadProgress, setLoadProgress] = useState(0);
   const [pageLoaded, setPageLoaded] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+
+  // Injected when the server returns a 5xx on the main page load.
+  // Checks whether the session cookie is valid despite the error —
+  // some portal servers set the cookie before emitting the 500.
+  const verifyAfter500JS = `
+(function() {
+  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'LOGIN_DEBUG', message: 'HTTP-err verify start — url=' + window.location.href }));
+  fetch('/api/v1/student/personal-attendance-overview?_locale=nl', { credentials: 'include' })
+    .then(function(r) {
+      var ct = r.headers.get('content-type') || '';
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'LOGIN_DEBUG', message: 'HTTP-err verify result — status=' + r.status + ' ct=' + ct }));
+      if (r.ok && ct.indexOf('json') !== -1) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'LOGIN_SUCCESS' }));
+      }
+    })
+    .catch(function(e) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'LOGIN_DEBUG', message: 'HTTP-err verify fetch error: ' + String(e && e.message ? e.message : e) }));
+    });
+  true;
+})();
+`;
+
+  function handleHttpError(event: WebViewHttpErrorEvent) {
+    const { statusCode } = event.nativeEvent;
+    if (statusCode >= 500 && !handledRef.current) {
+      // Cover the error page immediately so the user never sees it.
+      setVerifying(true);
+      // Session cookie may have been set before the server crashed.
+      // Give the browser 300 ms to process Set-Cookie headers, then check.
+      setTimeout(() => {
+        webViewRef.current?.injectJavaScript(verifyAfter500JS);
+      }, 300);
+    }
+  }
 
   function handleContinue() {
     if (handledRef.current) return;
@@ -70,9 +106,10 @@ export function LoginScreen() {
   }
 
   function handleMessage(event: WebViewMessageEvent) {
-    if (handledRef.current) return;
     try {
       const msg: ScraperMessage = JSON.parse(event.nativeEvent.data);
+      if (msg.type === 'LOGIN_DEBUG') return;
+      if (handledRef.current) return;
       if (msg.type === 'LOGIN_SUCCESS') {
         handledRef.current = true;
         setLoggedIn(true);
@@ -80,6 +117,11 @@ export function LoginScreen() {
     } catch {
       // ignore malformed messages
     }
+  }
+
+  function handleNavChange(nav: WebViewNavigation) {
+    // If the user navigates away from a 500 (e.g. back to login), lift the overlay
+    if (nav.loading) setVerifying(false);
   }
 
   return (
@@ -102,9 +144,12 @@ export function LoginScreen() {
           </View>
         )}
         <WebView
+          ref={webViewRef}
           source={{ uri: LOGIN_URL }}
-          injectedJavaScript={`${loginStyleJS}\ntrue;`}
+          injectedJavaScript={`${loginStyleJS}\n${loginDetectionJS}\ntrue;`}
           onMessage={handleMessage}
+          onNavigationStateChange={handleNavChange}
+          onHttpError={handleHttpError}
           onLoadProgress={({ nativeEvent }) => setLoadProgress(nativeEvent.progress)}
           onLoadEnd={() => setPageLoaded(true)}
           startInLoadingState
@@ -120,14 +165,21 @@ export function LoginScreen() {
           javaScriptEnabled
           limitsNavigationsToAppBoundDomains
         />
+        {/* Overlay shown while verifying session after a server error */}
+        {verifying && (
+          <View style={styles.verifyingOverlay}>
+            <ActivityIndicator size="large" color={NAVB_GREEN} />
+            <Text style={styles.loadingText}>Bezig met inloggen…</Text>
+          </View>
+        )}
       </View>
 
-      {/* Always-visible button — tap after completing login (password + 2FA) */}
+      {/* Subtle fallback — only visible if auto-detection doesn't fire */}
       <Pressable
-        style={[styles.continueButton, { bottom: insets.bottom + 20 }]}
+        style={[styles.fallbackButton, { bottom: insets.bottom + 20 }]}
         onPress={handleContinue}
       >
-        <Text style={styles.continueText}>Al ingelogd? Open app →</Text>
+        <Text style={styles.fallbackText}>Al ingelogd? Open app →</Text>
       </Pressable>
     </View>
   );
@@ -204,24 +256,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#718096',
   },
-  continueButton: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
-    backgroundColor: NAVB_GREEN,
-    borderRadius: 14,
-    paddingVertical: 18,
+  verifyingOverlay: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    gap: 12,
   },
-  continueText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+  fallbackButton: {
+    position: 'absolute',
+    alignSelf: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  fallbackText: {
+    color: 'rgba(255,255,255,0.40)',
+    fontSize: 13,
+    textDecorationLine: 'underline',
+  },
+  debugPanel: {
+    position: 'absolute',
+    left: 8,
+    right: 8,
+    maxHeight: 160,
+    backgroundColor: 'rgba(0,0,0,0.82)',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  debugScroll: {
+    flex: 1,
+  },
+  debugLine: {
+    color: '#00FF88',
+    fontSize: 10,
+    fontFamily: 'Courier New',
+    lineHeight: 14,
   },
 });

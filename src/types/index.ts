@@ -114,6 +114,7 @@ export type ScraperMessageType =
   | 'ABSENCES_DATA'
   | 'CONTACTS_DATA'
   | 'LOGIN_SUCCESS'
+  | 'LOGIN_DEBUG'
   | 'SESSION_VALID'
   | 'SESSION_INVALID'
   | 'SCRAPE_ERROR';

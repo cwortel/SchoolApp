@@ -32,6 +32,15 @@ export function ScraperWebView() {
   const setContacts  = useContactsStore((s) => s.setContacts);
   const setContactsError = useContactsStore((s) => s.setError);
 
+  const handleNetworkError = useCallback(() => {
+    const errMsg = `Netwerkfout bij ophalen ${pending?.id ?? ''}`;
+    if (pending?.id === 'schedule') setScheduleError(errMsg);
+    else if (pending?.id === 'grades') setGradesError(errMsg);
+    else if (pending?.id === 'absences') setAbsencesError(errMsg);
+    else if (pending?.id === 'contacts') setContactsError(errMsg);
+    dequeue();
+  }, [pending]);
+
   const handleMessage = useCallback(
     (event: WebViewMessageEvent) => {
       let msg: ScraperMessage;
@@ -78,6 +87,8 @@ export function ScraperWebView() {
         source={{ uri: pending.url }}
         injectedJavaScript={pending.scraperJs + '\ntrue;'}
         onMessage={handleMessage}
+        onError={handleNetworkError}
+        onHttpError={handleNetworkError}
         sharedCookiesEnabled
         domStorageEnabled
         javaScriptEnabled

@@ -14,7 +14,7 @@ export const LOGIN_URL = 'https://mijn.calderacademie.nl';
  * Any portal page works — we just need the WebView's cookie store
  * to be seeded so the injected fetch can use the session cookie.
  */
-export const SESSION_CHECK_URL = 'https://mijn.calderacademie.nl';
+export const SESSION_CHECK_URL = 'https://mijn.calderacademie.nl/api/v1/student/personal-attendance-overview?_locale=nl';
 
 /**
  * Injected into the VISIBLE login WebView on every full-page navigation.
@@ -27,31 +27,64 @@ export const SESSION_CHECK_URL = 'https://mijn.calderacademie.nl';
  *   - Login page:        no app-student-dashboard, no _auth_code → nothing
  *   - 2FA page:         app-student-dashboard present (Angular shell wraps it),
  *                        _auth_code present (the code input)  → nothing
- *   - Real dashboard:   app-student-dashboard present, _auth_code absent → FIRE
+ *   - 500 error page:   app-student-dashboard may be present (Angular shell),
+ *                        _auth_code absent — BUT API check will fail → nothing
+ *   - Real dashboard:   app-student-dashboard present, _auth_code absent,
+ *                        AND API returns JSON → FIRE
  *
- * Uses only a MutationObserver (no immediate check) so we always wait for
- * Angular to fully render before evaluating — avoiding race conditions.
+ * An extra fetch() guard is used because after 2FA the server may briefly
+ * return a 500 inside the Angular shell — the DOM check alone would match
+ * that state too early. The API check confirms the session cookie is
+ * actually valid before we transition.
  */
 export const loginDetectionJS = `
 (function() {
   var done = false;
   var obs;
 
-  function check() {
-    if (done) return;
-    if (!document.querySelector('app-student-dashboard')) return;
-    if (document.querySelector('input[id="_auth_code"]')) return;
-    done = true;
-    if (obs) obs.disconnect();
-    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'LOGIN_SUCCESS' }));
+  function dbg(msg) {
+    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'LOGIN_DEBUG', message: msg }));
   }
 
-  // Define obs first, then do immediate check so obs.disconnect() is always safe
+  function verify() {
+    if (done) return;
+    dbg('API check start — url=' + window.location.href);
+    fetch('/api/v1/student/personal-attendance-overview?_locale=nl', { credentials: 'include' })
+      .then(function(r) {
+        if (done) return;
+        var ct = r.headers.get('content-type') || '';
+        dbg('API check result — status=' + r.status + ' ct=' + ct);
+        if (r.ok && ct.indexOf('json') !== -1) {
+          done = true;
+          if (obs) obs.disconnect();
+          dbg('LOGIN_SUCCESS firing');
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'LOGIN_SUCCESS' }));
+        } else {
+          dbg('API not ready — keep observing (status=' + r.status + ')');
+        }
+      })
+      .catch(function(e) {
+        dbg('API fetch error: ' + String(e && e.message ? e.message : e));
+      });
+  }
+
+  function check() {
+    if (done) return;
+    var hasDash  = !!document.querySelector('app-student-dashboard');
+    var has2FA   = !!document.querySelector('input[id="_auth_code"]');
+    var hasError = !!document.querySelector('app-error-page, .error-page, [class*="error"]');
+    dbg('DOM check — dashboard=' + hasDash + ' 2FA=' + has2FA + ' error=' + hasError + ' url=' + window.location.href);
+    if (!hasDash) return;
+    if (has2FA) return;
+    verify();
+  }
+
+  // Define obs first so obs.disconnect() is always safe inside verify()
   obs = new MutationObserver(check);
   obs.observe(document.documentElement, { childList: true, subtree: true });
 
-  // Immediate check — covers the case where Angular has already rendered
-  // by the time this script runs (fast devices / cached JS bundle)
+  dbg('loginDetectionJS installed — url=' + window.location.href);
+  // Immediate check — covers fast devices where Angular has already rendered
   check();
 })();
 `;
