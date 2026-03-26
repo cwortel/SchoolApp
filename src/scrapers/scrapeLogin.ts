@@ -10,69 +10,109 @@
 export const LOGIN_URL = 'https://mijn.calderacademie.nl';
 
 /**
- * URL loaded by the hidden session-check WebView on app launch to determine
- * whether the previous session cookie is still valid. It redirects to the
- * dashboard if logged in, or back to login if not.
+ * URL loaded by the hidden session-check WebView on app startup.
+ * Any portal page works — we just need the WebView's cookie store
+ * to be seeded so the injected fetch can use the session cookie.
  */
-export const SESSION_CHECK_URL =
-  'https://mijn.calderacademie.nl/nl/fvs/student/dashboard#/student-dashboard';
+export const SESSION_CHECK_URL = 'https://mijn.calderacademie.nl/api/v1/student/personal-attendance-overview?_locale=nl';
 
 /**
- * Injected into the VISIBLE login WebView. Fires window.ReactNativeWebView
- * .postMessage with LOGIN_SUCCESS as soon as the Angular dashboard mounts.
+ * Injected into the VISIBLE login WebView on every full-page navigation.
  *
- * Strategy:
- *  1. If <app-student-dashboard> is already present (cached load), fire immediately.
- *  2. Otherwise attach a MutationObserver on <body> so we catch it the moment
- *     Angular inserts the component — regardless of animation or redirect timing.
+ * Detection strategy: watch for BOTH conditions to be true simultaneously:
+ *   1. <app-student-dashboard> is present  — the Angular dashboard component
+ *   2. input#_auth_code is ABSENT          — the 2FA code input field
+ *
+ * Why this combination is exact:
+ *   - Login page:        no app-student-dashboard, no _auth_code → nothing
+ *   - 2FA page:         app-student-dashboard present (Angular shell wraps it),
+ *                        _auth_code present (the code input)  → nothing
+ *   - 500 error page:   app-student-dashboard may be present (Angular shell),
+ *                        _auth_code absent — BUT API check will fail → nothing
+ *   - Real dashboard:   app-student-dashboard present, _auth_code absent,
+ *                        AND API returns JSON → FIRE
+ *
+ * An extra fetch() guard is used because after 2FA the server may briefly
+ * return a 500 inside the Angular shell — the DOM check alone would match
+ * that state too early. The API check confirms the session cookie is
+ * actually valid before we transition.
  */
 export const loginDetectionJS = `
-  (function() {
-    function notifySuccess() {
-      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'LOGIN_SUCCESS' }));
-    }
-    if (document.querySelector('app-student-dashboard')) {
-      notifySuccess();
-      return;
-    }
-    var observer = new MutationObserver(function(mutations, obs) {
-      if (document.querySelector('app-student-dashboard')) {
-        obs.disconnect();
-        notifySuccess();
-      }
-    });
-    observer.observe(document.body || document.documentElement, {
-      childList: true,
-      subtree: true,
-    });
-  })();
+(function() {
+  var done = false;
+  var obs;
+
+  function dbg(msg) {
+    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'LOGIN_DEBUG', message: msg }));
+  }
+
+  function verify() {
+    if (done) return;
+    dbg('API check start — url=' + window.location.href);
+    fetch('/api/v1/student/personal-attendance-overview?_locale=nl', { credentials: 'include' })
+      .then(function(r) {
+        if (done) return;
+        var ct = r.headers.get('content-type') || '';
+        dbg('API check result — status=' + r.status + ' ct=' + ct);
+        if (r.ok && ct.indexOf('json') !== -1) {
+          done = true;
+          if (obs) obs.disconnect();
+          dbg('LOGIN_SUCCESS firing');
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'LOGIN_SUCCESS' }));
+        } else {
+          dbg('API not ready — keep observing (status=' + r.status + ')');
+        }
+      })
+      .catch(function(e) {
+        dbg('API fetch error: ' + String(e && e.message ? e.message : e));
+      });
+  }
+
+  function check() {
+    if (done) return;
+    var hasDash  = !!document.querySelector('app-student-dashboard');
+    var has2FA   = !!document.querySelector('input[id="_auth_code"]');
+    var hasError = !!document.querySelector('app-error-page, .error-page, [class*="error"]');
+    dbg('DOM check — dashboard=' + hasDash + ' 2FA=' + has2FA + ' error=' + hasError + ' url=' + window.location.href);
+    if (!hasDash) return;
+    if (has2FA) return;
+    verify();
+  }
+
+  // Define obs first so obs.disconnect() is always safe inside verify()
+  obs = new MutationObserver(check);
+  obs.observe(document.documentElement, { childList: true, subtree: true });
+
+  dbg('loginDetectionJS installed — url=' + window.location.href);
+  // Immediate check — covers fast devices where Angular has already rendered
+  check();
+})();
 `;
 
 /**
  * Injected into the HIDDEN session-check WebView on app startup.
- * Reports SESSION_VALID if the dashboard loaded, SESSION_INVALID otherwise.
+ * Makes a lightweight API call inside the WebView so the session cookie
+ * is automatically included — returns SESSION_VALID on HTTP 200, SESSION_INVALID
+ * for any auth failure or network error. Resolves in ~200 ms instead of up to 6 s.
  */
 export const sessionCheckJS = `
   (function() {
-    function check() {
-      if (document.querySelector('app-student-dashboard')) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'SESSION_VALID' }));
-      } else {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'SESSION_INVALID' }));
-      }
-    }
-    // Wait up to 6 s for Angular to boot
-    var waited = 0;
-    var interval = setInterval(function() {
-      waited += 500;
-      if (document.querySelector('app-student-dashboard')) {
-        clearInterval(interval);
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'SESSION_VALID' }));
-      } else if (waited >= 6000) {
-        clearInterval(interval);
-        // If the URL is back on the login page, the session has expired
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'SESSION_INVALID' }));
-      }
-    }, 500);
+    fetch('/api/v1/student/personal-attendance-overview?_locale=nl', { credentials: 'include' })
+      .then(function(r) {
+        // When not logged in the server redirects to the HTML login page,
+        // which returns HTTP 200 with Content-Type: text/html — not JSON.
+        // Only treat the session as valid when we actually got JSON back.
+        var ct = r.headers.get('content-type') || '';
+        var isJson = ct.indexOf('json') !== -1;
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({ type: (r.ok && isJson) ? 'SESSION_VALID' : 'SESSION_INVALID' })
+        );
+      })
+      .catch(function() {
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({ type: 'SESSION_INVALID' })
+        );
+      });
   })();
+  true;
 `;

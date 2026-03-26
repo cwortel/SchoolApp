@@ -62,14 +62,33 @@ export interface SubjectAverage {
   ec?: number;
 }
 
-// ─── Absences ─────────────────────────────────────────────────────────────────
+// ─── Attendance / Absences ────────────────────────────────────────────────────
 
-export interface Absence {
-  id?: string;
-  date: string;
-  subject: string;
-  type: string;
-  status: string;
+export interface AttendanceRecord {
+  /** Date string as returned by the API: "DD-MM-YYYY" */
+  lessonDate: string;
+  /** "O" = Ochtend (morning), "M" = Middag (afternoon) */
+  dagdeelAfk: 'O' | 'M';
+  /** Subject/module name, trimmed */
+  moduleName: string;
+  hoursMissed: number;
+  hoursPresent: number;
+  /** School year number */
+  yr: number;
+  /** Period number */
+  pe: number;
+  /** Unique lesson identifier */
+  kvmrId: number;
+  /** null = no event, 0 = unexcused, 1 = excused */
+  allDayValid: null | 0 | 1;
+  /** null = not late, 0 = unexcused late, 1 = excused late */
+  tooLateValid: null | 0 | 1;
+  /** null = didn't leave early, 0 = unexcused, 1 = excused */
+  tooEarlyValid: null | 0 | 1;
+  /** Arrival time string if arrived late, e.g. "09:30" */
+  cameTooLate: string | null;
+  /** Departure time string if left early */
+  leftTooEarly: string | null;
 }
 
 // ─── Contacts ─────────────────────────────────────────────────────────────────
@@ -95,6 +114,7 @@ export type ScraperMessageType =
   | 'ABSENCES_DATA'
   | 'CONTACTS_DATA'
   | 'LOGIN_SUCCESS'
+  | 'LOGIN_DEBUG'
   | 'SESSION_VALID'
   | 'SESSION_INVALID'
   | 'SCRAPE_ERROR';
@@ -111,4 +131,6 @@ export interface ScrapeRequest {
   url: string;
   scraperJs: string;
   expectedType: ScraperMessageType;
+  /** Auto-assigned by the queue store — used as React key to force WebView remount per job. */
+  requestId?: number;
 }

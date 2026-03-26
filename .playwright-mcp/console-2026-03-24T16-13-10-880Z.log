@@ -1,0 +1,103 @@
+[    1294ms] [ERROR] Failed to load resource: net::ERR_NAME_NOT_RESOLVED @ https://www.googletagmanager.com/gtag/js?id=G-3YG7KJFFYN:0
+[    3078ms] [ERROR] Failed to load resource: net::ERR_NAME_NOT_RESOLVED @ https://www.googletagmanager.com/gtm.js?id=GTM-M7CK67M&gtg_health=1:0
+[    3168ms] [ERROR] Failed to load resource: net::ERR_NAME_NOT_RESOLVED @ https://www.clarity.ms/tag/m13wrkffrx:0
+[    4592ms] ReferenceError: fbq is not defined
+    at <anonymous>:1:1
+    at https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:937:429
+    at https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:938:132
+    at vR (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:939:31)
+    at Ld.uR (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:936:92)
+    at Ld.<anonymous> (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:345:187)
+    at k.apply (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:270:466)
+    at hb (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:234:719)
+    at gb (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:234:470)
+    at Ld.<anonymous> (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:294:473)
+[    4602ms] ReferenceError: fbq is not defined
+    at <anonymous>:1:1
+    at https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:937:429
+    at https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:938:132
+    at vR (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:939:31)
+    at Ld.uR (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:936:92)
+    at Ld.<anonymous> (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:345:187)
+    at k.apply (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:270:466)
+    at hb (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:234:719)
+    at gb (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:234:470)
+    at Ld.<anonymous> (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:294:473)
+[    4808ms] ReferenceError: fbq is not defined
+    at <anonymous>:1:1
+    at https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:937:429
+    at https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:938:132
+    at vR (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:939:31)
+    at Ld.uR (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:936:92)
+    at Ld.<anonymous> (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:345:187)
+    at k.apply (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:270:466)
+    at hb (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:234:719)
+    at gb (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:234:470)
+    at Ld.<anonymous> (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:294:473)
+[    4809ms] ReferenceError: fbq is not defined
+    at <anonymous>:1:1
+    at https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:937:429
+    at https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:938:132
+    at vR (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:939:31)
+    at Ld.uR (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:936:92)
+    at Ld.<anonymous> (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:345:187)
+    at k.apply (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:270:466)
+    at hb (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:234:719)
+    at gb (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:234:470)
+    at Ld.<anonymous> (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:294:473)
+[    4809ms] ReferenceError: fbq is not defined
+    at <anonymous>:1:1
+    at https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:937:429
+    at https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:938:132
+    at vR (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:939:31)
+    at Ld.uR (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:936:92)
+    at Ld.<anonymous> (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:345:187)
+    at k.apply (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:270:466)
+    at hb (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:234:719)
+    at gb (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:234:470)
+    at Ld.<anonymous> (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:294:473)
+[    4810ms] ReferenceError: fbq is not defined
+    at <anonymous>:1:1
+    at https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:937:429
+    at https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:938:132
+    at vR (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:939:31)
+    at Ld.uR (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:936:92)
+    at Ld.<anonymous> (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:345:187)
+    at k.apply (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:270:466)
+    at hb (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:234:719)
+    at gb (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:234:470)
+    at Ld.<anonymous> (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:294:473)
+[    4812ms] ReferenceError: fbq is not defined
+    at <anonymous>:1:1
+    at https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:937:429
+    at https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:938:132
+    at vR (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:939:31)
+    at Ld.uR (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:936:92)
+    at Ld.<anonymous> (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:345:187)
+    at k.apply (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:270:466)
+    at hb (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:234:719)
+    at gb (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:234:470)
+    at Ld.<anonymous> (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:294:473)
+[    4812ms] ReferenceError: fbq is not defined
+    at <anonymous>:1:1
+    at https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:937:429
+    at https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:938:132
+    at vR (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:939:31)
+    at Ld.uR (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:936:92)
+    at Ld.<anonymous> (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:345:187)
+    at k.apply (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:270:466)
+    at hb (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:234:719)
+    at gb (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:234:470)
+    at Ld.<anonymous> (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:294:473)
+[    4938ms] [ERROR] Failed to load resource: net::ERR_NAME_NOT_RESOLVED @ https://www.googletagmanager.com/gtag/destination?id=G-3YG7KJFFYN&cx=c&gtm=4e63k1&sign=e06b43014f2df2d7400114367c3550bb4ac1c83650ca37554755e5449b2d38fc_20260324:0
+[    6268ms] ReferenceError: fbq is not defined
+    at <anonymous>:1:1
+    at https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:937:429
+    at https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:938:132
+    at vR (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:939:31)
+    at Ld.uR (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:936:92)
+    at Ld.<anonymous> (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:345:187)
+    at k.apply (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:270:466)
+    at hb (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:234:719)
+    at gb (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:234:470)
+    at Ld.<anonymous> (https://sst.navb.nl/gtm.js?id=GTM-M7CK67M:294:473)

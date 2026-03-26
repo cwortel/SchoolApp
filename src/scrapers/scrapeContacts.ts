@@ -10,7 +10,8 @@
  * Section headers are short bold-only paragraphs (e.g. "FAM", "TFB").
  */
 
-export const CONTACTS_URL = 'https://mijn.calderacademie.nl/edu_pages/contactinfo';
+// Contacts are now fetched directly via src/api/fetchContacts.ts
+// This file is kept as a placeholder and no longer used.
 
 export const contactsScraperJS = `
 (function() {

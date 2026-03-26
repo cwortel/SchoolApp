@@ -11,9 +11,11 @@ import { ScrapeRequest } from '../types';
 
 interface ScraperQueueState {
   queue: ScrapeRequest[];
-  enqueueScrape: (request: ScrapeRequest) => void;
+  enqueueScrape: (request: Omit<ScrapeRequest, 'requestId'>) => void;
   dequeue: () => void;
 }
+
+let _nextRequestId = 0;
 
 export const useScraperQueue = create<ScraperQueueState>((set) => ({
   queue: [],
@@ -21,7 +23,7 @@ export const useScraperQueue = create<ScraperQueueState>((set) => ({
     set((state) => {
       // Deduplicate by id — don't add if already queued or currently running
       if (state.queue.some((r) => r.id === request.id)) return state;
-      return { queue: [...state.queue, request] };
+      return { queue: [...state.queue, { ...request, requestId: ++_nextRequestId }] };
     }),
   dequeue: () => set((state) => ({ queue: state.queue.slice(1) })),
 }));
